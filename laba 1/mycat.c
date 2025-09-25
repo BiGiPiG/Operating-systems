@@ -8,22 +8,25 @@
 void process_file(FILE *file, int number_all, int number_nonblank, int show_ends) {
     char buffer[BUFFER_SIZE];
     int line_number = 1;
-    int empty_line = 0;
 
     while (fgets(buffer, sizeof(buffer), file) != NULL) {
         size_t len = strlen(buffer);
-        
-        if (len > 0 && buffer[len - 1] == '\n') {
+        int has_newline = (len > 0 && buffer[len - 1] == '\n');
+
+        if (has_newline) {
             buffer[len - 1] = '\0';
-            empty_line = (len == 1);
-        } else {
-            empty_line = 0;
+            len--;
+
+            if (len > 0 && buffer[len - 1] == '\r') {
+                buffer[len - 1] = '\0';
+                len--;
+            }
         }
 
         if (number_all) {
             printf("%6d\t", line_number++);
         } else if (number_nonblank) {
-            if (!empty_line && buffer[0] != '\0') {
+            if (len > 0) {
                 printf("%6d\t", line_number++);
             } else {
                 printf("      \t");
@@ -32,11 +35,13 @@ void process_file(FILE *file, int number_all, int number_nonblank, int show_ends
 
         printf("%s", buffer);
 
-        if (show_ends && len > 0 && buffer[len - 1] != '\n') {
+        if (show_ends) {
             printf("$");
         }
 
-        printf("\n");
+        if (has_newline) {
+            printf("\n");
+        }
     }
 }
 
@@ -65,6 +70,9 @@ int main(int argc, char *argv[]) {
             case 'E':
                 show_ends = 1;
                 break;
+            case 'h':
+                printf("Использование: %s [-n] [-b] [-E] [файл...]\n", argv[0]);
+                return 0;
         }
     }
 
@@ -82,7 +90,6 @@ int main(int argc, char *argv[]) {
                 perror(argv[i]);
                 continue;
             }
-            
             process_file(file, number_all, number_nonblank, show_ends);
             fclose(file);
         }
