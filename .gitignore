@@ -2,3 +2,5 @@
 *.exe
 mycat
 mygrep
+myls
+mychmod
