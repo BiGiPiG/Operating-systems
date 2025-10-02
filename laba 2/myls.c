@@ -14,20 +14,17 @@
 
 #define MAX_FILES 1024
 
-// Структура для хранения информации о файле
 typedef struct {
     char name[256];
     struct stat st;
     char link_target[1024];
 } file_info;
 
-// Функции для цветного вывода
 void reset_color() { printf("\033[0m"); }
-void blue_color() { printf("\033[1;34m"); }    // Директория
-void green_color() { printf("\033[1;32m"); }   // Исполняемый файл
-void cyan_color() { printf("\033[1;36m"); }    // Ссылка
+void blue_color() { printf("\033[1;34m"); }
+void green_color() { printf("\033[1;32m"); } 
+void cyan_color() { printf("\033[1;36m"); }   
 
-// Функция для определения цвета файла
 void set_file_color(mode_t mode, int is_link) {
     if (is_link) {
         cyan_color();
@@ -38,7 +35,6 @@ void set_file_color(mode_t mode, int is_link) {
     }
 }
 
-// Функция для получения строкового представления прав доступа
 void get_permissions(mode_t mode, char *str) {
     str[0] = S_ISDIR(mode) ? 'd' : S_ISLNK(mode) ? 'l' : '-';
     str[1] = (mode & S_IRUSR) ? 'r' : '-';
@@ -53,14 +49,12 @@ void get_permissions(mode_t mode, char *str) {
     str[10] = '\0';
 }
 
-// Функция сравнения для сортировки
 int compare_files(const void *a, const void *b) {
     const file_info *fa = (const file_info *)a;
     const file_info *fb = (const file_info *)b;
     return strcmp(fa->name, fb->name);
 }
 
-// Функция для получения максимальной длинны для выравнивания
 void get_max_lengths(file_info *files, int count, int *max_links, int *max_user, 
                     int *max_group, int *max_size, int *max_name) {
     *max_links = *max_user = *max_group = *max_size = *max_name = 0;
@@ -83,12 +77,10 @@ void get_max_lengths(file_info *files, int count, int *max_links, int *max_user,
     }
 }
 
-// Функция для вывода в длинном формате
 void print_long_format(file_info *files, int count, int show_dot) {
     int total_blocks = 0;
     int max_links, max_user, max_group, max_size, max_name;
-    
-    // Подсчет total blocks и фильтрация скрытых файлов
+
     int visible_count = 0;
     for (int i = 0; i < count; i++) {
         if (!show_dot && files[i].name[0] == '.') continue;
@@ -123,7 +115,6 @@ void print_long_format(file_info *files, int count, int show_dot) {
                max_size, (long)files[i].st.st_size,
                time_str);
         
-        // Цветной вывод имени файла
         int is_link = S_ISLNK(files[i].st.st_mode);
         set_file_color(files[i].st.st_mode, is_link);
         printf("%s", files[i].name);
@@ -137,9 +128,7 @@ void print_long_format(file_info *files, int count, int show_dot) {
     }
 }
 
-// Функция для обычного вывода (ПРАВИЛЬНАЯ версия)
 void print_normal_format(file_info *files, int count, int show_dot) {
-    // Сначала собираем видимые файлы
     char *visible_files[count];
     int visible_count = 0;
     
@@ -150,14 +139,12 @@ void print_normal_format(file_info *files, int count, int show_dot) {
     
     if (visible_count == 0) return;
     
-    // Находим максимальную длину имени
     int max_name_len = 0;
     for (int i = 0; i < visible_count; i++) {
         int len = strlen(visible_files[i]);
         if (len > max_name_len) max_name_len = len;
     }
     
-    // Ширина терминала 
     int term_width = 80;
     int padding = 2;
     int col_width = max_name_len + padding;
@@ -167,12 +154,10 @@ void print_normal_format(file_info *files, int count, int show_dot) {
     
     int rows = (visible_count + cols - 1) / cols;
     
-    // ПРАВИЛЬНЫЙ алгоритм: вывод по строкам
     for (int row = 0; row < rows; row++) {
         for (int col = 0; col < cols; col++) {
-            int idx = col * rows + row;  // Это правильная формула!
+            int idx = col * rows + row;
             if (idx < visible_count) {
-                // Находим файл в исходном массиве для цвета
                 int file_idx = -1;
                 for (int i = 0; i < count; i++) {
                     if (!show_dot && files[i].name[0] == '.') continue;
@@ -183,7 +168,6 @@ void print_normal_format(file_info *files, int count, int show_dot) {
                 }
                 
                 if (file_idx != -1) {
-                    // Цитирование имен с пробелами
                     char *name = files[file_idx].name;
                     int has_space = strchr(name, ' ') != NULL;
                     
@@ -197,10 +181,8 @@ void print_normal_format(file_info *files, int count, int show_dot) {
                     }
                     reset_color();
                     
-                    // Выравнивание (только если не последний в строке)
                     int name_len = strlen(name) + (has_space ? 2 : 0);
                     if (col < cols - 1) {
-                        // Проверяем, есть ли следующий файл в этой строке
                         int next_idx = (col + 1) * rows + row;
                         if (next_idx < visible_count) {
                             for (int j = name_len; j < col_width; j++) {
@@ -219,7 +201,6 @@ int main(int argc, char *argv[]) {
     int opt_l = 0, opt_a = 0;
     int opt;
     
-    // Обработка опций с помощью getopt
     while ((opt = getopt(argc, argv, "la")) != -1) {
         switch (opt) {
             case 'l': opt_l = 1; break;
@@ -230,7 +211,6 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Определение директорий для обработки
     char *directories[argc];
     int dir_count = 0;
     
@@ -238,16 +218,13 @@ int main(int argc, char *argv[]) {
         directories[dir_count++] = argv[i];
     }
     
-    // Если директории не указаны, используем текущую
     if (dir_count == 0) {
         directories[dir_count++] = ".";
     }
     
-    // Обработка каждой директории
     for (int dir_idx = 0; dir_idx < dir_count; dir_idx++) {
         char *dir_name = directories[dir_idx];
         
-        // Вывод имени директории, если их несколько
         if (dir_count > 1) {
             printf("%s:\n", dir_name);
         }
@@ -263,7 +240,6 @@ int main(int argc, char *argv[]) {
         
         struct dirent *entry;
         while ((entry = readdir(dir)) != NULL && file_count < MAX_FILES) {
-            // Пропускаем . и .. если не указана опция -a
             if (!opt_a && (strcmp(entry->d_name, ".") == 0 || 
                           strcmp(entry->d_name, "..") == 0)) {
                 continue;
@@ -271,16 +247,13 @@ int main(int argc, char *argv[]) {
             
             strcpy(files[file_count].name, entry->d_name);
             
-            // Получаем полный путь к файлу
             char full_path[1024];
             snprintf(full_path, sizeof(full_path), "%s/%s", dir_name, entry->d_name);
             
-            // Используем lstat вместо stat для корректной обработки ссылок
             if (lstat(full_path, &files[file_count].st) == -1) {
                 continue;
             }
             
-            // Если это символическая ссылка, получаем цель
             if (S_ISLNK(files[file_count].st.st_mode)) {
                 ssize_t len = readlink(full_path, files[file_count].link_target, 
                                      sizeof(files[file_count].link_target) - 1);
@@ -298,17 +271,14 @@ int main(int argc, char *argv[]) {
         
         closedir(dir);
         
-        // Сортировка файлов по алфавиту
         qsort(files, file_count, sizeof(file_info), compare_files);
         
-        // Вывод в зависимости от опций
         if (opt_l) {
             print_long_format(files, file_count, opt_a);
         } else {
             print_normal_format(files, file_count, opt_a);
         }
         
-        // Пустая строка между директориями
         if (dir_idx < dir_count - 1) {
             printf("\n");
         }
