@@ -19,14 +19,12 @@ void print_usage(const char *program_name) {
     fprintf(stderr, "  %s 755 file.txt\n", program_name);
 }
 
-// Функция для обработки символьного режима
 int apply_symbolic_mode(const char *mode_str, mode_t current_mode, mode_t *new_mode) {
     *new_mode = current_mode;
     
     const char *p = mode_str;
-    
-    // Парсим целевую группу пользователей [ugoa]*
-    int users = 0; // битовая маска: u=1, g=2, o=4, a=7
+
+    int users = 0;
     while (*p && *p != '+' && *p != '-' && *p != '=') {
         switch (*p) {
             case 'u': users |= 1; break;
@@ -40,10 +38,8 @@ int apply_symbolic_mode(const char *mode_str, mode_t current_mode, mode_t *new_m
         p++;
     }
     
-    // Если группа не указана, используем 'a'
     if (users == 0) users = 7;
     
-    // Парсим оператор [+-=]
     if (*p != '+' && *p != '-' && *p != '=') {
         fprintf(stderr, "Expected operator (+, -, =), got: %c\n", *p);
         return -1;
@@ -51,7 +47,6 @@ int apply_symbolic_mode(const char *mode_str, mode_t current_mode, mode_t *new_m
     char operation = *p;
     p++;
     
-    // Парсим права доступа [rwx]*
     int permissions = 0;
     while (*p) {
         switch (*p) {
@@ -65,36 +60,35 @@ int apply_symbolic_mode(const char *mode_str, mode_t current_mode, mode_t *new_m
         p++;
     }
     
-    // Применяем операцию к каждой указанной группе
-    if (users & 1) { // user (владелец)
+    if (users & 1) {
         if (operation == '+') {
             *new_mode |= (permissions << 6);
         } else if (operation == '-') {
             *new_mode &= ~(permissions << 6);
         } else if (operation == '=') {
-            *new_mode &= ~(7 << 6); // очищаем биты владельца
+            *new_mode &= ~(7 << 6);
             *new_mode |= (permissions << 6);
         }
     }
     
-    if (users & 2) { // group (группа)
+    if (users & 2) {
         if (operation == '+') {
             *new_mode |= (permissions << 3);
         } else if (operation == '-') {
             *new_mode &= ~(permissions << 3);
         } else if (operation == '=') {
-            *new_mode &= ~(7 << 3); // очищаем биты группы
+            *new_mode &= ~(7 << 3);
             *new_mode |= (permissions << 3);
         }
     }
     
-    if (users & 4) { // others (остальные)
+    if (users & 4) {
         if (operation == '+') {
             *new_mode |= permissions;
         } else if (operation == '-') {
             *new_mode &= ~permissions;
         } else if (operation == '=') {
-            *new_mode &= ~7; // очищаем биты остальных
+            *new_mode &= ~7;
             *new_mode |= permissions;
         }
     }
@@ -102,9 +96,7 @@ int apply_symbolic_mode(const char *mode_str, mode_t current_mode, mode_t *new_m
     return 0;
 }
 
-// Функция для обработки octal режима
 int apply_octal_mode(const char *mode_str, mode_t *new_mode) {
-    // Проверяем, что строка состоит из 3 цифр
     if (strlen(mode_str) != 3) {
         fprintf(stderr, "Octal mode must be 3 digits\n");
         return -1;
@@ -125,9 +117,7 @@ int apply_octal_mode(const char *mode_str, mode_t *new_mode) {
     return 0;
 }
 
-// Функция для определения типа режима (symbolic или octal)
 int parse_mode(const char *mode_str, mode_t current_mode, mode_t *new_mode) {
-    // Проверяем, является ли режим octal (только цифры)
     int is_octal = 1;
     for (const char *p = mode_str; *p; p++) {
         if (*p < '0' || *p > '7') {
@@ -152,11 +142,9 @@ int main(int argc, char *argv[]) {
     const char *mode_str = argv[1];
     int success_count = 0;
     
-    // Обрабатываем каждый файл
     for (int i = 2; i < argc; i++) {
         const char *filename = argv[i];
         
-        // Получаем текущие права доступа файла
         struct stat st;
         if (stat(filename, &st) == -1) {
             perror(filename);
@@ -166,13 +154,11 @@ int main(int argc, char *argv[]) {
         mode_t current_mode = st.st_mode;
         mode_t new_mode;
         
-        // Парсим и применяем новый режим
         if (parse_mode(mode_str, current_mode, &new_mode) == -1) {
             fprintf(stderr, "Invalid mode: %s\n", mode_str);
             continue;
         }
         
-        // Применяем новые права доступа
         if (chmod(filename, new_mode) == -1) {
             perror(filename);
             continue;
