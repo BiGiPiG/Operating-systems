@@ -31,16 +31,6 @@ void print_help() {
     printf("  ./archiver -h                      Show help\n");
 }
 
-int read_header(int fd, struct file_header *hdr) {
-    ssize_t n = read(fd, hdr, sizeof(struct file_header));
-    if (n == 0) return 0;
-    if (n != sizeof(struct file_header)) {
-        perror("read header");
-        return -1;
-    }
-    return 1;
-}
-
 int write_header(int fd, struct file_header *hdr) {
     ssize_t n = write(fd, hdr, sizeof(struct file_header));
     if (n != sizeof(struct file_header)) {
