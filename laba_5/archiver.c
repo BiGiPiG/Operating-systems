@@ -50,7 +50,6 @@ int write_header(int fd, struct file_header *hdr) {
 }
 
 int add_file(const char *archive_name, const char *filename) {
-    // Проверяем существование и доступность файла для добавления
     if (access(filename, R_OK) != 0) {
         perror("access input file");
         return 1;
@@ -62,7 +61,6 @@ int add_file(const char *archive_name, const char *filename) {
         return 1;
     }
 
-    // Открываем архив для добавления (создаем если не существует)
     int a_fd = open(archive_name, O_RDWR | O_CREAT | O_APPEND, 0644);
     if (a_fd < 0) {
         perror("open archive");
