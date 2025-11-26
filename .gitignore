@@ -9,4 +9,6 @@ archiver
 producer
 consumer
 check_pipe
+sender
+receiver
 main
