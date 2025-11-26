@@ -29,7 +29,6 @@ int main() {
     int fd = open(fifo, O_RDONLY);
     if (fd == -1) {
         perror("Error opening FIFO");
-        fprintf(stderr, "Make sure another process is writing to the FIFO\n");
         exit(EXIT_FAILURE);
     }
 

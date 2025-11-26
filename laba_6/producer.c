@@ -27,13 +27,15 @@ int main() {
     struct tm *timeinfo;
     char send_time[64];
 
-    if (mkfifo(fifo, 0666) && errno != EEXIST) {
-        perror("Fifo creation error");
+    if (mknod(fifo, S_IFIFO | 0666, 0) == -1) {
+    if (errno != EEXIST) {
+        perror("mknod error");
         exit(1);
     }
+}
 
     printf("Waiting for readers...\n");
-    sleep(5);
+    sleep(10);
 
     time(&rawtime);
     timeinfo = localtime(&rawtime);
