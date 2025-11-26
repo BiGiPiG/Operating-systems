@@ -65,9 +65,6 @@ int main() {
 
         get_current_time_with_ms(time_buffer, sizeof(time_buffer));
         printf("Parent (PID: %d) started at: %s\n", getpid(), time_buffer);
-        printf("Waiting 5 seconds...\n");
-
-        sleep(5);
 
         get_current_time_with_ms(time_buffer, sizeof(time_buffer));
         
@@ -76,6 +73,9 @@ int main() {
                 getpid(), time_buffer);
 
         printf("Parent sending at: %s\n", time_buffer);
+
+        printf("Waiting 5 seconds...\n");
+        sleep(5);
         
         write(pipefd[1], buffer, strlen(buffer) + 1);
         close(pipefd[1]);
