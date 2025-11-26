@@ -8,4 +8,5 @@ myfork
 archiver
 producer
 consumer
+check_pipe
 main
