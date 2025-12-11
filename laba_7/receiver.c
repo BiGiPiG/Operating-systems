@@ -8,6 +8,7 @@
 #include <string.h>
 #include <signal.h>
 
+
 #define SHM_SIZE 256
 
 static char *shared_mem = NULL;
