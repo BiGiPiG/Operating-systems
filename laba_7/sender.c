@@ -51,7 +51,7 @@ int main() {
     if (shmid == -1) {
         if (errno == EEXIST) {
             fprintf(stderr, "Передающая программа уже запущена (сегмент уже существует).\n");
-        } else {
+        } else {          
             perror("shmget");
         }
         unlink("shm.key");
