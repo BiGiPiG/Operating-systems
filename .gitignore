@@ -12,3 +12,4 @@ check_pipe
 sender
 receiver
 main
+mutex
