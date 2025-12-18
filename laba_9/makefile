@@ -1,27 +1,29 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -O2 -D_XOPEN_SOURCE=700
-LDFLAGS = -pthread
 
-# Цели
+# Общие флаги
+CFLAGS_COMMON = -Wall -Wextra -std=c99 -O2
+
+# Флаги для pthread_example
+CFLAGS_PTHREAD = $(CFLAGS_COMMON) -D_GNU_SOURCE -pthread
+LDFLAGS_PTHREAD = -pthread
+
+# Флаги для sender/receiver (System V IPC)
+CFLAGS_IPC = $(CFLAGS_COMMON) -D_GNU_SOURCE
+
 TARGETS = pthread_example sender receiver
 
-# Правила по умолчанию
 all: $(TARGETS)
 
-# Компиляция программы с pthread и semaphores (внутрипроцессные)
 pthread_example: pthread_example.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+	$(CC) $(CFLAGS_PTHREAD) $(LDFLAGS_PTHREAD) -o $@ $<
 
-# Sender (System V shared memory + semaphore)
 sender: sender.c
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS_IPC) -o $@ $<
 
-# Receiver (System V shared memory + semaphore)
 receiver: receiver.c
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS_IPC) -o $@ $<
 
-# Очистка
 clean:
 	rm -f $(TARGETS) shm.key
 
-.PHONY: all clean distclean
+.PHONY: all clean

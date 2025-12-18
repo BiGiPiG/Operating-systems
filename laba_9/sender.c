@@ -1,4 +1,3 @@
-// sender.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -44,17 +43,31 @@ void cleanup(int sig) {
     exit(EXIT_SUCCESS);
 }
 
+void remove_old_ipc(key_t shm_key, key_t sem_key) {
+    int old_shmid = shmget(shm_key, 0, 0);
+    if (old_shmid != -1) {
+        shmctl(old_shmid, IPC_RMID, NULL);
+        printf("Удалён старый сегмент разделяемой памяти.\n");
+    }
+
+    int old_semid = semget(sem_key, 0, 0);
+    if (old_semid != -1) {
+        semctl(old_semid, 0, IPC_RMID);
+        printf("Удалён старый семафор.\n");
+    }
+}
+
 int main() {
     signal(SIGINT, cleanup);
     signal(SIGTERM, cleanup);
 
     FILE *fp = fopen("shm.key", "w");
-    if (fp) {
-        fclose(fp);
-    } else {
+    if (!fp) {
         perror("Не удалось создать shm.key");
         exit(EXIT_FAILURE);
     }
+    fprintf(fp, "%d", getpid());
+    fclose(fp);
 
     key_t shm_key = ftok("shm.key", 'S');
     key_t sem_key = ftok("shm.key", 'X');
@@ -64,33 +77,33 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    shmid = shmget(shm_key, SHM_SIZE, IPC_CREAT | IPC_EXCL | 0666);
+    remove_old_ipc(shm_key, sem_key);
+
+    shmid = shmget(shm_key, SHM_SIZE, IPC_CREAT | 0666);
     if (shmid == -1) {
-        if (errno == EEXIST) {
-            fprintf(stderr, "Ошибка: сегмент разделяемой памяти уже существует. Убедитесь, что sender не запущен.\n");
-        } else {
-            perror("shmget");
-        }
+        perror("shmget (sender)");
         unlink("shm.key");
         exit(EXIT_FAILURE);
     }
 
-    semid = semget(sem_key, 1, IPC_CREAT | IPC_EXCL | 0666);
+    semid = semget(sem_key, 1, IPC_CREAT | 0666);
     if (semid == -1) {
-        if (errno == EEXIST) {
-            fprintf(stderr, "Ошибка: семафор уже существует.\n");
-        } else {
-            perror("semget");
-        }
+        perror("semget (sender)");
         shmctl(shmid, IPC_RMID, NULL);
         unlink("shm.key");
         exit(EXIT_FAILURE);
     }
 
-    if (semctl(semid, 0, SETVAL, 1) == -1) {
+    union semun {
+        int val;
+        struct semid_ds *buf;
+        unsigned short *array;
+    } sem_arg;
+    sem_arg.val = 1;
+    if (semctl(semid, 0, SETVAL, sem_arg) == -1) {
         perror("semctl SETVAL");
         shmctl(shmid, IPC_RMID, NULL);
-        semctl(semid, IPC_RMID, 0);
+        semctl(semid, 0, IPC_RMID);
         unlink("shm.key");
         exit(EXIT_FAILURE);
     }
@@ -99,15 +112,18 @@ int main() {
     if (shared_mem == (void *)-1) {
         perror("shmat");
         shmctl(shmid, IPC_RMID, NULL);
-        semctl(semid, IPC_RMID, 0);
+        semctl(semid, 0, IPC_RMID);
         unlink("shm.key");
         exit(EXIT_FAILURE);
     }
+
+    strcpy(shared_mem, "Initial data");
 
     printf("Sender (PID: %d) запущен. Отправка данных каждые 3 секунды...\n", getpid());
 
     while (1) {
         if (sem_lock(semid) == -1) {
+            if (errno == EINTR) continue;
             perror("sem_lock (sender)");
             break;
         }
@@ -121,7 +137,7 @@ int main() {
         }
 
         if (sem_unlock(semid) == -1) {
-            perror("sem_unlock (sender)");
+            if (errno != EINTR) perror("sem_unlock (sender)");
         }
 
         sleep(3);

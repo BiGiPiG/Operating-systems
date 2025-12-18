@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <linux/unistd.h>
 
 #define ARRAY_SIZE 20
 
@@ -14,7 +15,8 @@ char shared_buffer[ARRAY_SIZE] = {0};
 sem_t mutex;
 volatile int writer_done = 0;
 
-void* writer_thread(void* arg) {
+void* writer_thread(void *args) {
+    (void) args;
     int counter = 1;
     while (counter <= 10) {
         sem_wait(&mutex);
@@ -27,13 +29,14 @@ void* writer_thread(void* arg) {
     return NULL;
 }
 
-void* reader_thread(void* arg) {
+void* reader_thread(void *args) {
+    (void) args;
     pid_t tid = syscall(SYS_gettid);
     while (!writer_done) {
         sem_wait(&mutex);
         printf("[Reader TID: %d] Array content: \"%s\"\n", (int)tid, shared_buffer);
         sem_post(&mutex);
-        usleep(200000);
+        sleep(1);
     }
     return NULL;
 }

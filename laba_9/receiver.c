@@ -36,23 +36,39 @@ int main() {
     signal(SIGINT, receiver_cleanup);
     signal(SIGTERM, receiver_cleanup);
 
+    while (access("shm.key", F_OK) == -1) {
+        fprintf(stderr, "Ожидание создания shm.key (запустите sender)...\n");
+        sleep(1);
+    }
+
     key_t shm_key = ftok("shm.key", 'S');
     key_t sem_key = ftok("shm.key", 'X');
     if (shm_key == -1 || sem_key == -1) {
-        perror("ftok — убедитесь, что файл shm.key существует (запустите sender)");
+        perror("ftok — убедитесь, что файл shm.key существует");
         exit(EXIT_FAILURE);
     }
 
-    int shmid = shmget(shm_key, SHM_SIZE, 0666);
-    if (shmid == -1) {
-        perror("shmget (receiver)");
-        exit(EXIT_FAILURE);
+    int shmid = -1;
+    while ((shmid = shmget(shm_key, SHM_SIZE, 0666)) == -1) {
+        if (errno == ENOENT) {
+            fprintf(stderr, "Сегмент памяти ещё не создан. Ожидание...\n");
+            sleep(1);
+            continue;
+        } else {
+            perror("shmget (receiver)");
+            exit(EXIT_FAILURE);
+        }
     }
 
-    semid = semget(sem_key, 1, 0666);
-    if (semid == -1) {
-        perror("semget (receiver)");
-        exit(EXIT_FAILURE);
+    while ((semid = semget(sem_key, 1, 0666)) == -1) {
+        if (errno == ENOENT) {
+            fprintf(stderr, "Семафор ещё не создан. Ожидание...\n");
+            sleep(1);
+            continue;
+        } else {
+            perror("semget (receiver)");
+            exit(EXIT_FAILURE);
+        }
     }
 
     shared_mem = (char *)shmat(shmid, NULL, 0);
@@ -65,6 +81,7 @@ int main() {
 
     while (1) {
         if (sem_lock(semid) == -1) {
+            if (errno == EINTR) continue;
             perror("sem_lock (receiver)");
             break;
         }
@@ -82,7 +99,7 @@ int main() {
         local_copy[SHM_SIZE - 1] = '\0';
 
         if (sem_unlock(semid) == -1) {
-            perror("sem_unlock (receiver)");
+            if (errno != EINTR) perror("sem_unlock (receiver)");
         }
 
         printf("Receiver Time: %02d:%02d:%02d | PID: %d | Data: %s\n",
