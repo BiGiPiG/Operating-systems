@@ -4,38 +4,35 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdatomic.h>
 #include <string.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-#include <linux/unistd.h>
 
 #define ARRAY_SIZE 20
 
 char shared_buffer[ARRAY_SIZE] = {0};
-sem_t mutex;
-volatile int writer_done = 0;
+sem_t sync_sem;
+atomic_int writer_done = 0;
 
 void* writer_thread(void *args) {
     (void) args;
     int counter = 1;
     while (counter <= 10) {
-        sem_wait(&mutex);
+        sem_wait(&sync_sem);
         snprintf(shared_buffer, ARRAY_SIZE, "%d", counter);
-        sem_post(&mutex);
+        sem_post(&sync_sem);
         counter++;
         sleep(1);
     }
-    writer_done = 1;
+    atomic_store(&writer_done, 1);
     return NULL;
 }
 
 void* reader_thread(void *args) {
     (void) args;
-    pid_t tid = syscall(SYS_gettid);
-    while (!writer_done) {
-        sem_wait(&mutex);
-        printf("[Reader TID: %d] Array content: \"%s\"\n", (int)tid, shared_buffer);
-        sem_post(&mutex);
+    while (atomic_load(&writer_done) == 0) {
+        sem_wait(&sync_sem);
+        printf("[Reader] Array content: \"%s\"\n", shared_buffer);
+        sem_post(&sync_sem);
         sleep(1);
     }
     return NULL;
@@ -44,7 +41,7 @@ void* reader_thread(void *args) {
 int main() {
     pthread_t writer, reader;
 
-    if (sem_init(&mutex, 0, 1) == -1) {
+    if (sem_init(&sync_sem, 0, 1) == -1) {
         perror("sem_init");
         exit(EXIT_FAILURE);
     }
@@ -61,7 +58,6 @@ int main() {
     pthread_join(writer, NULL);
     pthread_join(reader, NULL);
 
-    sem_destroy(&mutex);
-
+    sem_destroy(&sync_sem);
     return 0;
 }
