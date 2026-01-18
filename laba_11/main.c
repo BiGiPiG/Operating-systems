@@ -99,8 +99,6 @@ int main() {
         pthread_join(reader_tids[i], NULL);
     }
 
-    pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&cond);
     printf("Программа завершена.\n");
     return 0;
 }
