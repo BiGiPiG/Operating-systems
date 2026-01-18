@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -13,6 +14,7 @@ volatile int write_counter = 0;
 volatile int stop = 0;
 
 void* writer_thread(void* arg) {
+    (void)arg;
     while (!stop) {
         pthread_rwlock_wrlock(&rwlock);
         write_counter++;
@@ -67,7 +69,6 @@ int main() {
         pthread_join(reader_tids[i], NULL);
     }
 
-    pthread_rwlock_destroy(&rwlock);
     printf("Программа завершена.\n");
     return 0;
 }
